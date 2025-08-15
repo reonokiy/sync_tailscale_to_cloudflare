@@ -1,0 +1,88 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - master
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Get short SHA
+        id: short-sha
+        run: echo "short-sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker images (master branch)
+        if: github.ref == 'refs/heads/master'
+        uses: docker/bake-action@v4
+        with:
+          targets: latest
+          push: true
+          files: |
+            ./docker-bake.hcl
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ github.repository }}
+          COMMIT_SHA: ${{ steps.short-sha.outputs.short-sha }}
+
+      - name: Build and push Docker images (tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker/bake-action@v4
+        with:
+          targets: release
+          push: true
+          files: |
+            ./docker-bake.hcl
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+
+      - name: Build Docker images (PR)
+        if: github.event_name == 'pull_request'
+        uses: docker/bake-action@v4
+        with:
+          targets: default
+          push: false
+          files: |
+            ./docker-bake.hcl
