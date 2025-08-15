@@ -54,7 +54,7 @@ jobs:
 
       - name: Build and push Docker images (master branch)
         if: github.ref == 'refs/heads/master'
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v6
         with:
           targets: latest
           push: true
@@ -67,7 +67,7 @@ jobs:
 
       - name: Build and push Docker images (tags)
         if: startsWith(github.ref, 'refs/tags/')
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v6
         with:
           targets: release
           push: true
@@ -80,7 +80,7 @@ jobs:
 
       - name: Build Docker images (PR)
         if: github.event_name == 'pull_request'
-        uses: docker/bake-action@v4
+        uses: docker/bake-action@v6
         with:
           targets: default
           push: false
