@@ -13,6 +13,7 @@
 - 📝 **详细日志**: 提供详细的操作日志记录
 - ⚡ **增量更新**: 只更新变化的记录，避免不必要的 API 调用
 - 📲 **通知支持**: 支持通过 ntfy.sh 发送同步通知
+- 🌟 **通配符记录**: 可选择为每个设备创建 `*.hostname.domain` 通配符解析
 - 🐳 **Docker 支持**: 完整的 Docker 构建和部署支持
 - 🏗️ **多平台**: 支持 `linux/amd64` 和 `linux/arm64` 架构
 - 🚀 **自动发布**: GitHub Actions 自动构建和发布 Docker 镜像
@@ -98,6 +99,9 @@ DEVICE_NAME_PATTERN=server-*                    # 只同步匹配模式的设备
 
 # 基础域名（可选）
 CLOUDFLARE_BASE_DOMAIN=tailscale.example.com    # 在子域下创建记录
+
+# 通配符记录设置（可选）
+CREATE_WILDCARD_RECORDS=true                   # 为每个设备创建 *.hostname.base_domain 记录
 
 # 通知设置（可选）
 NTFY_TOPIC=your-unique-topic-name               # ntfy.sh 通知主题
@@ -307,6 +311,28 @@ just build-latest
 如果设置了 `CLOUDFLARE_BASE_DOMAIN`，记录会创建在子域下：
 - 基础域名：`tailscale.example.com`
 - 创建的 DNS 记录：`my-laptop.tailscale.example.com -> 100.64.1.2`
+
+### 🌟 通配符记录
+
+当启用 `CREATE_WILDCARD_RECORDS=true` 时，除了主机记录外，还会为每个设备创建通配符记录：
+
+```
+*.<device-hostname>.<base-domain> -> <tailscale-ip>
+```
+
+这样，所有指向设备子域的请求都会解析到同一个 IP：
+
+**示例**：
+- 设备：`my-laptop.tailscale.example.com -> 100.64.1.2`
+- 通配符：`*.my-laptop.tailscale.example.com -> 100.64.1.2`
+
+**实际效果**：
+- `my-laptop.tailscale.example.com` ✅
+- `api.my-laptop.tailscale.example.com` ✅  
+- `web.my-laptop.tailscale.example.com` ✅
+- `anything.my-laptop.tailscale.example.com` ✅
+
+这对运行多个服务的设备特别有用，可以为不同的服务使用不同的子域名。
 
 ## 📝 注意事项
 

@@ -110,12 +110,14 @@ class CloudflareAPI:
         zone_id: str,
         domain: str,
         base_domain: Optional[str] = None,
+        create_wildcard_records: bool = False,
     ):
         self.api_token = api_token
         self.zone_id = zone_id
         self.domain = domain  # The main domain (e.g., example.com)
         # Base domain for DNS records (e.g., tailscale.example.com or just example.com)
         self.base_domain = base_domain or domain
+        self.create_wildcard_records = create_wildcard_records
         self.base_url = "https://api.cloudflare.com/client/v4"
         self.headers = {
             "Authorization": f"Bearer {api_token}",
@@ -315,23 +317,38 @@ class DNSSync:
 
         # Build current DNS mapping (name -> {record_id, content})
         dns_mapping = {}
+        wildcard_mapping = {}
+        
         for record in dns_records:
             name = record["name"]
             # Only consider records that match our base domain pattern
             if name.endswith(f".{self.cloudflare.base_domain}"):
                 hostname = name.replace(f".{self.cloudflare.base_domain}", "")
-                dns_mapping[hostname] = {
-                    "id": record["id"],
-                    "content": record["content"],
-                    "full_name": name,
-                }
+                
+                # Check if this is a wildcard record
+                if hostname.startswith("*."):
+                    # Remove the "*." prefix to get the actual hostname
+                    actual_hostname = hostname[2:]
+                    wildcard_mapping[actual_hostname] = {
+                        "id": record["id"],
+                        "content": record["content"],
+                        "full_name": name,
+                    }
+                else:
+                    dns_mapping[hostname] = {
+                        "id": record["id"],
+                        "content": record["content"],
+                        "full_name": name,
+                    }
 
         created = updated = deleted = 0
 
         # Create or update records for Tailscale devices
         for hostname, ip in tailscale_devices.items():
             full_name = f"{hostname}.{self.cloudflare.base_domain}"
+            wildcard_name = f"*.{hostname}.{self.cloudflare.base_domain}"
 
+            # Handle main hostname record
             if hostname in dns_mapping:
                 # Record exists, check if IP changed
                 if dns_mapping[hostname]["content"] != ip:
@@ -360,6 +377,36 @@ class DNSSync:
                     logger.info(f"[DRY RUN] Would create {hostname} -> {ip}")
                     created += 1
 
+            # Handle wildcard record if enabled
+            if self.cloudflare.create_wildcard_records:
+                if hostname in wildcard_mapping:
+                    # Wildcard record exists, check if IP changed
+                    if wildcard_mapping[hostname]["content"] != ip:
+                        logger.info(
+                            f"IP changed for wildcard *.{hostname}: {wildcard_mapping[hostname]['content']} -> {ip}"
+                        )
+                        if not dry_run:
+                            if self.cloudflare.update_dns_record(
+                                wildcard_mapping[hostname]["id"], wildcard_name, ip
+                            ):
+                                updated += 1
+                        else:
+                            logger.info(f"[DRY RUN] Would update wildcard *.{hostname} to {ip}")
+                            updated += 1
+                    else:
+                        logger.debug(f"No change needed for wildcard *.{hostname}")
+                    # Remove from wildcard mapping so we don't delete it later
+                    del wildcard_mapping[hostname]
+                else:
+                    # New wildcard record, create it
+                    logger.info(f"Creating new wildcard DNS record for *.{hostname} -> {ip}")
+                    if not dry_run:
+                        if self.cloudflare.create_dns_record(wildcard_name, ip):
+                            created += 1
+                    else:
+                        logger.info(f"[DRY RUN] Would create wildcard *.{hostname} -> {ip}")
+                        created += 1
+
         # Delete records for devices no longer in Tailscale
         for hostname, record_info in dns_mapping.items():
             logger.info(f"Deleting DNS record for removed device: {hostname}")
@@ -369,6 +416,17 @@ class DNSSync:
             else:
                 logger.info(f"[DRY RUN] Would delete {hostname}")
                 deleted += 1
+
+        # Delete wildcard records for devices no longer in Tailscale
+        if self.cloudflare.create_wildcard_records:
+            for hostname, record_info in wildcard_mapping.items():
+                logger.info(f"Deleting wildcard DNS record for removed device: *.{hostname}")
+                if not dry_run:
+                    if self.cloudflare.delete_dns_record(record_info["id"], f"*.{hostname}"):
+                        deleted += 1
+                else:
+                    logger.info(f"[DRY RUN] Would delete wildcard *.{hostname}")
+                    deleted += 1
 
         logger.info(
             f"Sync complete: {created} created, {updated} updated, {deleted} deleted"
@@ -424,6 +482,8 @@ Configuration:
     # Base domain for DNS records (e.g., tailscale.example.com)
     # If not specified, defaults to the main domain
     cloudflare_base_domain = os.getenv("CLOUDFLARE_BASE_DOMAIN")
+    # Whether to create wildcard records (*.hostname.base_domain)
+    create_wildcard_records = os.getenv("CREATE_WILDCARD_RECORDS", "true").lower() in ("true", "1", "yes", "on")
 
     # Notification configuration
     ntfy_topic = os.getenv("NTFY_TOPIC")
@@ -467,6 +527,7 @@ Configuration:
             str(cloudflare_zone_id),
             str(cloudflare_domain),
             cloudflare_base_domain,  # This can be None, which will default to cloudflare_domain
+            create_wildcard_records,
         )
 
         # Create DNS sync instance and run
