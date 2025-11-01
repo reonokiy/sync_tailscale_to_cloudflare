@@ -1,6 +1,6 @@
 # docker-bake.hcl
 variable "DEFAULT_TAG" {
-  default = "sync-tailscale-to-cloudflare:local"
+  default = "tsync:local"
 }
 
 variable "REGISTRY" {
@@ -8,7 +8,7 @@ variable "REGISTRY" {
 }
 
 variable "IMAGE_NAME" {
-  default = "sync-tailscale-to-cloudflare"
+  default = "tsync"
 }
 
 variable "TAG" {

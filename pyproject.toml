@@ -1,5 +1,5 @@
 [project]
-name = "sync-tailscale-to-cloudflare-dns"
+name = "tsync"
 version = "0.1.0"
 description = "Sync Tailscale device names and IPs to Cloudflare DNS A records"
 readme = "README.md"

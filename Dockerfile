@@ -29,11 +29,11 @@ FROM gcr.io/distroless/python3-debian12:latest
 COPY --from=builder /app/.venv /app/.venv
 
 # Copy the application code
-COPY --from=builder /app/main.py /app/main.py
+COPY --from=builder /app/tsync /app/tsync
 
 # Set the Python path to include the virtual environment
 ENV PYTHONPATH="/app/.venv/lib/python3.12/site-packages"
 
 WORKDIR /app
 
-ENTRYPOINT ["python3", "main.py"]
+ENTRYPOINT ["python3", "-m", "tsync"]
