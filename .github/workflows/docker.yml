@@ -83,6 +83,6 @@ jobs:
         uses: docker/bake-action@v6
         with:
           targets: default
-          push: false
+          push: true
           files: |
             ./docker-bake.hcl
