@@ -15,7 +15,7 @@ build:
     @echo "📦 Building local development image..."
     docker buildx bake default
 
-# Build latest images (for master branch)
+# Build latest images (for main branch)
 build-latest:
     @echo "📦 Building latest images with commit hash: {{commit_sha}}..."
     REGISTRY={{registry}} IMAGE_NAME={{image_name}} COMMIT_SHA={{commit_sha}} docker buildx bake latest

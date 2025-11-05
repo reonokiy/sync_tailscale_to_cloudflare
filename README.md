@@ -29,7 +29,7 @@ dry-run previews, and ships with optional ntfy.sh notifications.
 docker pull ghcr.io/reonokiy/tsync:latest
 
 # Download the sample environment file
-curl -o .env https://raw.githubusercontent.com/reonokiy/sync_tailscale_to_cloudflare/master/.env.example
+curl -o .env https://raw.githubusercontent.com/reonokiy/sync_tailscale_to_cloudflare/main/.env.example
 
 # Edit .env and enter your API credentials
 nano .env
@@ -150,8 +150,8 @@ recipes.
 just help            # list commands
 just build           # local development build
 just run-dry         # run the local image in dry-run mode
-just build-latest    # build multi-arch images tagged latest/master
-just push-latest     # push latest/master/commit-hash tags
+just build-latest    # build multi-arch images tagged latest/main
+just push-latest     # push latest/main/commit-hash tags
 just build-release v1.2.3
 just push-release v1.2.3
 ```
@@ -165,7 +165,7 @@ just build-latest
 ```
 
 GitHub Actions automatically builds and publishes images when you push to
-`master`, push a tag matching `v*`, or open a pull request.
+`main`, push a tag matching `v*`, or open a pull request.
 
 ## Troubleshooting
 

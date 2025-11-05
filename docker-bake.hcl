@@ -32,12 +32,12 @@ target "default" {
   tags = ["${DEFAULT_TAG}"]
 }
 
-# Production target for latest (master branch)
+# Production target for latest (main branch)
 target "latest" {
   inherits = ["_common"]
   tags = [
     "${REGISTRY}/${IMAGE_NAME}:latest",
-    "${REGISTRY}/${IMAGE_NAME}:master",
+    "${REGISTRY}/${IMAGE_NAME}:main",
     "${REGISTRY}/${IMAGE_NAME}:${COMMIT_SHA}"
   ]
   cache-from = ["type=gha"]
